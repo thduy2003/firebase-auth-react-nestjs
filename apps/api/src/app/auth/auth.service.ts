@@ -1,9 +1,16 @@
-import { User } from '@myorg/api-client';
-import { Injectable, Logger } from '@nestjs/common';
+import { User, contracts } from '@myorg/api-client';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { DecodedIdToken } from 'firebase-admin/lib/auth/token-verifier';
 import { admin } from './firebase-admin.module';
 import { prisma } from '../prisma.module';
-
+import { TsRestException } from '@ts-rest/nest';
+import { Prisma } from '@prisma/client';
+const userSelect = {
+    email: true,
+    img: true,
+    name: true,
+    id: true
+} satisfies Prisma.UserSelect
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name)
@@ -25,12 +32,7 @@ export class AuthService {
                 name: decodedToken.name,
                 img: decodedToken.picture
             },
-            select: {
-                name: true,
-                email: true,
-                img: true,
-                id: true,
-            }
+            select: userSelect
         })
         await admin.auth().setCustomUserClaims(decodedToken.uid, {
             dbUserId: userInfo.id
@@ -51,6 +53,43 @@ export class AuthService {
         return {
             expiresIn,
             sessionCookie
+        }
+    }
+    public async getUserInfo(email: string): Promise<User>{
+        const userInfo = await prisma.user.findUnique({
+            where: {email},
+            select: userSelect
+        })
+        if(!userInfo) {
+            throw new TsRestException(contracts.auth.me, {
+                body: {
+                    message: 'User not found'
+                }, 
+                status: 404
+            }) 
+        }
+        return userInfo
+    }
+    public async revokeToken(sessionCookie: string): Promise<void>{
+        try {
+            const decodedClaims = await admin.auth().verifySessionCookie(sessionCookie, true)
+            await admin.auth().revokeRefreshTokens(decodedClaims.sub)
+        } catch (error) {
+            if(error instanceof Error) {
+                throw new TsRestException(contracts.auth.logout, {
+                    body: {
+                        message: 'You are not authorized to access this resource'
+                    },
+                    status: HttpStatus.UNAUTHORIZED
+                })
+            }
+            this.logger.error(`Error revoking token ${error}`)
+            throw new TsRestException(contracts.auth.logout, {
+                body: {
+                    message: 'Error revoking token'
+                },
+                status: 500
+            })
         }
     }
 }

@@ -1,8 +1,10 @@
-import { Controller, HttpStatus, Logger, Req, Res } from '@nestjs/common';
+import { Controller, HttpStatus, Logger, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { TsRestHandler, tsRestHandler } from '@ts-rest/nest';
+import { TsRestException, TsRestHandler, tsRestHandler } from '@ts-rest/nest';
 import { contracts } from '@myorg/api-client';
-import {type Response} from 'express'
+import {type Response, Request} from 'express'
+import { FirebaseAuthGuard, ReqWithUser } from './guards/firebase-auth.guard';
+
 /*
 now if you recall and if I come here to the login contract we have this path to be /login and the path prefix to be /auth 
 that means that here in the controller we must get rid of this prefix because it is being handled automatically by the contract
@@ -57,5 +59,48 @@ export class AuthController {
         }
        })
        
+    }
+    @TsRestHandler(contracts.auth.me)
+    @UseGuards(FirebaseAuthGuard)
+    public async me(@Req() req:ReqWithUser) {
+        return tsRestHandler(contracts.auth.me, async () => {
+            try {
+            return {
+                status: HttpStatus.OK,
+                body: await this.authService.getUserInfo(req.user.email)
+            }
+            } catch (error) {
+                this.logger.error(`Error at /me ${error}`)
+                return {
+                    status: HttpStatus.INTERNAL_SERVER_ERROR,
+                    body: {
+                        message: 'Internal server error'
+                    }
+                }
+            }
+        })
+    }
+    @TsRestHandler(contracts.auth.logout)
+    @UseGuards(FirebaseAuthGuard)
+    public async logout(@Res({passthrough: true}) res:Response, @Req() req: ReqWithUser) {
+        return tsRestHandler(contracts.auth.logout, async () => {
+            try {
+                await this.authService.revokeToken(req.cookies.session)
+                res.clearCookie('session')
+            return {
+                status: HttpStatus.OK,
+                body: null
+            }
+            } catch (error) {
+                if(error instanceof TsRestException) throw error
+                this.logger.error(`Error at /logout ${error}`)
+                return {
+                    status: HttpStatus.INTERNAL_SERVER_ERROR,
+                    body: {
+                        message: 'Internal server error'
+                    }
+                }
+            }
+        })
     }
 }
