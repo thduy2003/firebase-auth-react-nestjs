@@ -20,6 +20,7 @@ export class AuthService {
         decodedToken: DecodedIdToken,
         userInfo: User
     }> {
+        this.logger.log(accessToken)
         const decodedToken = await admin.auth().verifyIdToken(accessToken)
         const userInfo = await prisma.user.upsert({
             where: {email: decodedToken.email},

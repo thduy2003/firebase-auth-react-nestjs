@@ -1,4 +1,4 @@
-import { initContract } from "@ts-rest/core";
+import { ServerInferResponses, initContract } from "@ts-rest/core";
 import { z } from "zod";
 
 export type User = {
@@ -53,3 +53,4 @@ export const authContract = c.router({
 }, {
   pathPrefix: '/auth'
 })
+export type GetMeResponse = ServerInferResponses<typeof authContract.me>

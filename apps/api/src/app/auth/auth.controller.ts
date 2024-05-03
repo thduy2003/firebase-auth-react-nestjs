@@ -21,7 +21,8 @@ export class AuthController {
     /**we can see we get the Headers and we can see authorization property and this all comes from the S schema we declared  */
     public async login(@Res({passthrough: true}) res: Response) {
        return tsRestHandler(contracts.auth.login, async ({headers}) => {
-        const accessToken = headers.authorization.replace('Bearer', '')
+        this.logger.log('chay vo day')
+        const accessToken = headers.authorization.replace('Bearer ', '')
         try {
            //1. verify the access token and get the user info from our database
         
@@ -45,7 +46,7 @@ export class AuthController {
                 return {
                     status: 500,
                     body: {
-                        message: 'Internal server error'
+                        message: `Internal server error error ${error}`
                     }
                 }
             }

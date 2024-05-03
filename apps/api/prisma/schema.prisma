@@ -9,8 +9,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "mysql"
+  url      = "mysql://testuser:testuser123@localhost:3307/testdb"
 }
 
 // we can map this to users, most of the times all of your queries will be from the email so we can add an index for the email so this is for faster querying 
@@ -18,12 +18,12 @@ datasource db {
 
 //we need to specify or tell the prisma cli where this schema is now you can say npx prisma db push
 model User {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+  id        String    @id @default(uuid())
   name      String?
-  email     String   @unique
+  email     String    @unique
   img       String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
 
   @@index([email])
   @@map("users")
