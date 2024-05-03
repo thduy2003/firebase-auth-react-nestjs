@@ -40,4 +40,17 @@ export class AuthService {
             userInfo
         }
     }
+    public async createSessionCookie(accessToken: string): Promise<{
+        expiresIn: number;
+        sessionCookie: string;
+    }> {
+        const expiresIn: number = 60*60*24*5; // 5 days
+        const sessionCookie = await admin.auth().createSessionCookie(accessToken, {
+            expiresIn
+        })
+        return {
+            expiresIn,
+            sessionCookie
+        }
+    }
 }

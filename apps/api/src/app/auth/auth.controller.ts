@@ -1,7 +1,8 @@
-import { Controller, Logger, Req, Res } from '@nestjs/common';
+import { Controller, HttpStatus, Logger, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { TsRestHandler, tsRestHandler } from '@ts-rest/nest';
 import { contracts } from '@myorg/api-client';
+import {type Response} from 'express'
 /*
 now if you recall and if I come here to the login contract we have this path to be /login and the path prefix to be /auth 
 that means that here in the controller we must get rid of this prefix because it is being handled automatically by the contract
@@ -19,9 +20,40 @@ export class AuthController {
     public async login(@Res({passthrough: true}) res: Response) {
        return tsRestHandler(contracts.auth.login, async ({headers}) => {
         const accessToken = headers.authorization.replace('Bearer', '')
-        return {
-            status: 200,
-            body: null
+        try {
+           //1. verify the access token and get the user info from our database
+        
+           const {userInfo} = await this.authService.verifyAndUpsertUser(accessToken)
+           //xai accessToken o day luon boi vi o tren dung verifyAndUserUser neu gap loi thi no nhay vao catch error luon
+           const {expiresIn, sessionCookie} = await this.authService.createSessionCookie(accessToken)
+
+           //2.create the session token with firebase 
+           res.cookie('session', sessionCookie, {
+            maxAge: expiresIn,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite:process.env.NODE_ENV === 'production' ? 'none': 'lax',
+           })
+           return {
+            status: HttpStatus.OK,
+            body: userInfo
+           }
+        } catch(error) {
+            if(error instanceof Error) {
+                return {
+                    status: 500,
+                    body: {
+                        message: 'Internal server error'
+                    }
+                }
+            }
+            this.logger.error(error)
+            return {
+                status: 500,
+                body: {
+                    message: 'Internal server error'
+                }
+            }
         }
        })
        
