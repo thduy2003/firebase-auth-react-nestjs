@@ -1,0 +1,30 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// we can map this to users, most of the times all of your queries will be from the email so we can add an index for the email so this is for faster querying 
+//but with the tradeoff of right performance degradation so make sure to set indexes wisely
+
+//we need to specify or tell the prisma cli where this schema is now you can say npx prisma db push
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+  name      String?
+  email     String   @unique
+  img       String?
+
+  @@index([email])
+  @@map("users")
+}
